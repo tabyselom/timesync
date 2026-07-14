@@ -12,9 +12,11 @@ import { AuthService } from './auth.service';
 import { WorkspaceMembersModule } from '../workspace-members/workspace-members.module';
 import { WorkspacesModule } from 'src/workspaces/workspaces.module';
 import { TokenService } from './token.service';
+import { JwtStrategy } from './strategies/jwt.strategy/jwt.strategy';
 
 @Module({
   imports: [
+    JwtModule.register({}), 
     UsersModule,
     WorkspacesModule,
     WorkspaceMembersModule,
@@ -34,10 +36,13 @@ import { TokenService } from './token.service';
   ],
 
   controllers: [AuthController],
+  
+  exports: [TokenService],
 
   providers: [
     AuthService,
-    TokenService
+    TokenService,
+    JwtStrategy
   ],
 })
 export class AuthModule {}
