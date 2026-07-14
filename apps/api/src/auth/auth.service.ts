@@ -21,6 +21,8 @@ import { comparePassword, hashPassword } from '../common/utils/password.util';
 import { generateSlug } from '../common/utils/slug.util';
 
 import { User, Workspace, WorkspaceRole } from '@prisma/client';
+import { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
+import { RefreshTokenDto } from './dto/refresh.dto';
 
 
 
@@ -107,6 +109,51 @@ export class AuthService {
     return this.buildAuthResponse(existingUser, workspace, tokens);
   
   }
+
+  async refresh(payload: JwtPayload, dto: RefreshTokenDto) {
+    console.log("payloade: ",payload);
+    console.log("dto: ",dto);
+    const existingUser = await this.usersService.findById(payload.id);
+  
+    if (!existingUser || !existingUser.refreshTokenHash) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+   
+    const isRefreshTokenValid = await this.tokenService.compareRefreshToken(
+      dto.refreshToken,
+      existingUser.refreshTokenHash,
+    );
+
+    if (!isRefreshTokenValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const tokens=await this.tokenService.generateToken(
+      existingUser.id,
+      existingUser.email,
+      payload.workspaceId,
+    );
+
+    const refreshTokenHash = await this.tokenService.hashRefreshToken(tokens.refreshToken);
+    await this.usersService.updateRefreshToken(existingUser.id, refreshTokenHash);
+
+    return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    };
+
+  
+
+
+  }
+
+  async logout(userId: string) {
+    await this.usersService.updateRefreshToken(userId, '');
+    return {
+    message: 'Logged out successfully',
+  };
+  }
+
 
   async me(userId: string) {
   return this.usersService.findById(userId);

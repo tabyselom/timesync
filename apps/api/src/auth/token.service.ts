@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { hashPassword } from 'src/common/utils/password.util';
+import { comparePassword, hashPassword } from 'src/common/utils/password.util';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config/dist/config.service';
 
@@ -35,7 +35,17 @@ export class TokenService {
         accessToken,
         refreshToken,
       };
-      }
+    }
+
+    async compareRefreshToken(
+    refreshToken: string,
+    refreshTokenHash: string,
+    ) {
+    return comparePassword(
+        refreshToken,
+        refreshTokenHash,
+    );
+    }
 
     generateRefreshToken(){}
 

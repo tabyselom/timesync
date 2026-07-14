@@ -5,8 +5,10 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { CurrentUser } from './decorators/current-user/current-user.decorator';
-import { JwtAuthGuard } from './guards/jwt-auth.guard/jwt-auth.guard';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { JwtPayload } from './../common/interfaces/jwt-payload.interface';
+import { RefreshTokenGuard } from './guards/refresh-token.guard';
+import { RefreshTokenDto } from './dto/refresh.dto';
 
 @ApiTags('Authentication')
 @Controller({
@@ -24,6 +26,24 @@ export class AuthController {
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Refresh access token' })
+  refresh(@Body() dto: RefreshTokenDto, @CurrentUser() user: JwtPayload) {
+    return this.authService.refresh(user, dto);
+
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  logout(@CurrentUser() user: JwtPayload) {
+    return this.authService.logout(user.id);
   }
 
   @Get('me')
