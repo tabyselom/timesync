@@ -14,16 +14,13 @@ async function bootstrap() {
     new FastifyAdapter(),
   );
 
-  // Global API prefix
   app.setGlobalPrefix('api');
 
-  // API versioning
   app.enableVersioning({
     type: VersioningType.URI,
     defaultVersion: '1',
   });
 
-  // Global validation
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -32,13 +29,11 @@ async function bootstrap() {
     }),
   );
 
-  // CORS
   app.enableCors({
     origin: ['http://localhost:3000'],
     credentials: true,
   });
 
-  // Swagger
   const config = new DocumentBuilder()
     .setTitle('TimeSync API')
     .setDescription('TimeSync Backend API')
@@ -52,10 +47,9 @@ async function bootstrap() {
 
   const port = Number(process.env.PORT) || 3001;
 
-  await app.listen(port, '0.0.0.0');
+  await app.listen({ port, host: '0.0.0.0' });
 
-  console.log(`🚀 TimeSync API running on http://localhost:${port}`);
-  console.log(`📚 Swagger Docs: http://localhost:${port}/api/docs`);
+  console.log(`🚀 API running on http://localhost:${port}`);
 }
 
 bootstrap();
