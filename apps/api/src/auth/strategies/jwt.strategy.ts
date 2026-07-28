@@ -20,11 +20,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     sub: string;
     email: string;
     workspaceId: string;
+    role: string;
   }) {
     return {
       id: payload.sub,
       email: payload.email,
       workspaceId: payload.workspaceId,
+      role:payload.role
     };
   }
 }

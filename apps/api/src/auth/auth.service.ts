@@ -57,10 +57,11 @@ export class AuthService {
   );
 
     const tokens = await this.tokenService.generateToken(
-    result.user.id,
-    result.user.email,
-    result.workspace.id,
-  );
+      result.user.id,
+      result.user.email,
+      result.workspace.id,
+      WorkspaceRole.OWNER,
+    );
 
   const refreshTokenHash = await this.tokenService.hashRefreshToken(tokens.refreshToken);
    await this.usersService.updateRefreshToken(
@@ -96,11 +97,13 @@ export class AuthService {
     }
 
     const workspace=memberShip.workspace;
+    const role = memberShip.role;
 
     const tokens = await this.tokenService.generateToken(
       existingUser.id,
       existingUser.email,
       workspace.id,
+      role
     );
 
     const refreshTokenHash = await this.tokenService.hashRefreshToken(tokens.refreshToken);
@@ -111,10 +114,8 @@ export class AuthService {
   }
 
   async refresh(payload: JwtPayload, dto: RefreshTokenDto) {
-    console.log("payloade: ",payload);
-    console.log("dto: ",dto);
-    const existingUser = await this.usersService.findById(payload.id);
-  
+   const existingUser = await this.usersService.findByIdWithMemberShips(payload.id);
+   
     if (!existingUser || !existingUser.refreshTokenHash) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -128,10 +129,19 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const tokens=await this.tokenService.generateToken(
+    const memberShip = existingUser.memberships[0];
+     
+    if (!memberShip) {
+      throw new UnauthorizedException('User has no workspace membership');
+    }
+    const role = memberShip.role;
+    const workspaceId = memberShip.workspaceId;
+
+    const tokens = await this.tokenService.generateToken(
       existingUser.id,
       existingUser.email,
-      payload.workspaceId,
+      workspaceId,
+      role
     );
 
     const refreshTokenHash = await this.tokenService.hashRefreshToken(tokens.refreshToken);

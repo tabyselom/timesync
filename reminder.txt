@@ -1,0 +1,17 @@
+# Start everything
+pnpm dev
+
+# Backend only
+pnpm --filter api start:dev
+
+# Frontend only
+pnpm --filter web dev
+
+# Build backend
+pnpm --filter api build
+
+# Prisma migration
+pnpm --filter api exec prisma migrate dev
+
+# Prisma Studio
+pnpm --filter api exec prisma studio

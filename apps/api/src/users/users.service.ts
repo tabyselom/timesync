@@ -54,5 +54,21 @@ export class UsersService {
       },
     },
   });
-}
+  }
+
+  async findByIdWithMemberShips(id:string){
+    return this.prisma.user.findUnique({
+      where:{
+        id
+      }
+      ,include:{
+        memberships:{
+          include:{
+            workspace:true,
+          }
+        }
+      }
+    })
+  }
+
 }

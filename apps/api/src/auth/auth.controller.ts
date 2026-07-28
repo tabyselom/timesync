@@ -1,14 +1,18 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards,
+ } from '@nestjs/common';
 import { ApiOperation,ApiBearerAuth , ApiResponse, ApiTags } from '@nestjs/swagger';
+import { WorkspaceRole } from '@prisma/client';
 
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { CurrentUser } from './decorators/current-user/current-user.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RolesGuard } from './guards/roles.guard';
 import type { JwtPayload } from './../common/interfaces/jwt-payload.interface';
-import { RefreshTokenGuard } from './guards/refresh-token.guard';
+
 import { RefreshTokenDto } from './dto/refresh.dto';
+import { Roles } from './decorators/roles/roles.decorator';
 
 @ApiTags('Authentication')
 @Controller({
@@ -35,7 +39,6 @@ export class AuthController {
   @ApiOperation({ summary: 'Refresh access token' })
   refresh(@Body() dto: RefreshTokenDto, @CurrentUser() user: JwtPayload) {
     return this.authService.refresh(user, dto);
-
   }
 
   @Post('logout')
@@ -51,5 +54,16 @@ export class AuthController {
   @ApiBearerAuth()
   getMe(@CurrentUser() user: JwtPayload) {
     return this.authService.me(user.id);
+  }
+
+  @Get('admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(WorkspaceRole.ADMIN)
+  adminOnly() {
+    
+    return {
+      
+      message: 'Welcome Admin!',
+    };
   }
 }

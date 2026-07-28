@@ -21,6 +21,16 @@ services:
     networks:
       - timesync-network
 
+  redis:
+    image: redis:8-alpine
+    container_name: timesync-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - timesync-network
   pgadmin:
     image: dpage/pgadmin4
 
@@ -43,6 +53,8 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   timesync-network:
+    driver: bridge
