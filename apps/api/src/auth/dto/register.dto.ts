@@ -29,6 +29,4 @@ export class RegisterDto {
   @IsNotEmpty()
   @MaxLength(100)
   workspaceName: string;
-
-  
 }

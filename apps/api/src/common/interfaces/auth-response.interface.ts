@@ -15,7 +15,7 @@ export interface AuthResponse {
     slug: string;
   };
 
-   tokens: {
+  tokens: {
     accessToken: string;
     refreshToken: string;
   };

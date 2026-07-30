@@ -9,6 +9,13 @@ import { WorkspaceRole } from '@prisma/client';
 
 import { ROLES_KEY } from '../decorators/roles/roles.decorator';
 
+import { Request } from 'express';
+import { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
+
+type AuthenticatedRequest = Request & {
+  user: JwtPayload;
+};
+
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
@@ -24,10 +31,8 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
-
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const user = request.user;
-
 
     if (!user) {
       throw new ForbiddenException('User not found.');

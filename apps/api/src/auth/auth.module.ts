@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config'
-
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { UsersModule } from '../users/users.module';
 import { TokenService } from './token.service';
@@ -12,17 +11,15 @@ import { AuthController } from './auth.controller';
 import { WorkspaceMembersModule } from '../workspace-members/workspace-members.module';
 import { WorkspacesModule } from 'src/workspaces/workspaces.module';
 
-
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
 
 @Module({
   imports: [
-    JwtModule.register({}), 
+    JwtModule.register({}),
     UsersModule,
     WorkspacesModule,
     WorkspaceMembersModule,
-    
 
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -39,14 +36,9 @@ import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
   ],
 
   controllers: [AuthController],
-  
+
   exports: [TokenService],
 
-  providers: [
-    AuthService,
-    TokenService,
-    JwtStrategy,
-    RefreshTokenStrategy,
-  ],
+  providers: [AuthService, TokenService, JwtStrategy, RefreshTokenStrategy],
 })
 export class AuthModule {}

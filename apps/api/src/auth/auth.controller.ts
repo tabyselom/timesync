@@ -1,6 +1,13 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards,
- } from '@nestjs/common';
-import { ApiOperation,ApiBearerAuth , ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiOperation, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { WorkspaceRole } from '@prisma/client';
 
 import { AuthService } from './auth.service';
@@ -60,9 +67,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(WorkspaceRole.ADMIN)
   adminOnly() {
-    
     return {
-      
       message: 'Welcome Admin!',
     };
   }

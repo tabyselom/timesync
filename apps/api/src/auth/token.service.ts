@@ -5,9 +5,6 @@ import { ConfigService } from '@nestjs/config/dist/config.service';
 
 import { WorkspaceRole } from '@prisma/client';
 
-
-
-
 @Injectable()
 export class TokenService {
   constructor(
@@ -28,8 +25,6 @@ export class TokenService {
       role,
     };
 
- 
-
     const accessToken = await this.jwtService.signAsync(payload, {
       secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
       expiresIn: this.configService.getOrThrow<string>(
@@ -44,12 +39,10 @@ export class TokenService {
       ) as '7d',
     });
 
-   
     return {
       accessToken,
       refreshToken,
     };
-   
   }
 
   async compareRefreshToken(refreshToken: string, refreshTokenHash: string) {

@@ -1,4 +1,4 @@
-import{WorkspaceRole} from '@prisma/client'
+import { WorkspaceRole } from '@prisma/client';
 
 export interface JwtPayload {
   id: string;

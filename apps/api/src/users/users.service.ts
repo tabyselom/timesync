@@ -15,60 +15,56 @@ export class UsersService {
 
   async findById(id: string) {
     return this.prisma.user.findUnique({
-      where: {id},
+      where: { id },
     });
   }
 
-  async create(
-    data: Prisma.UserCreateInput,
-    tx?: Tx,):Promise<User>
-  {
-  const db = tx ?? this.prisma;
-  return db.user.create({
+  async create(data: Prisma.UserCreateInput, tx?: Tx): Promise<User> {
+    const db = tx ?? this.prisma;
+    return db.user.create({
       data,
     });
   }
 
   async updateRefreshToken(
-    userId: string, 
-    refreshToken: string | null
-  ):Promise<void> {
+    userId: string,
+    refreshToken: string | null,
+  ): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
-      data: { 
-        refreshTokenHash: refreshToken
-       },
+      data: {
+        refreshTokenHash: refreshToken,
+      },
     });
   }
 
   async findByEmailWithMemberships(email: string) {
-  return this.prisma.user.findUnique({
-    where: {
-      email,
-    },
-    include: {
-      memberships: {
-        include: {
-          workspace: true,
+    return this.prisma.user.findUnique({
+      where: {
+        email,
+      },
+      include: {
+        memberships: {
+          include: {
+            workspace: true,
+          },
         },
       },
-    },
-  });
+    });
   }
 
-  async findByIdWithMemberShips(id:string){
+  async findByIdWithMemberShips(id: string) {
     return this.prisma.user.findUnique({
-      where:{
-        id
-      }
-      ,include:{
-        memberships:{
-          include:{
-            workspace:true,
-          }
-        }
-      }
-    })
+      where: {
+        id,
+      },
+      include: {
+        memberships: {
+          include: {
+            workspace: true,
+          },
+        },
+      },
+    });
   }
-
 }

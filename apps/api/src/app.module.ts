@@ -21,7 +21,6 @@ import { WorkspaceMembersModule } from './workspace-members/workspace-members.mo
     AuthModule,
     WorkspacesModule,
     WorkspaceMembersModule,
-    
   ],
 })
 export class AppModule {}

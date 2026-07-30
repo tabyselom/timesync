@@ -1,19 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import {
-  UnauthorizedException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 
 import { UsersService } from '../users/users.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { WorkspaceMembersService } from '../workspace-members/workspace-members.service';
-import{TokenService} from './token.service';
+import { TokenService } from './token.service';
 
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-
 
 import { EmailAlreadyExistsException } from '../common/exceptions/conflict.exception';
 
@@ -24,37 +20,30 @@ import { User, Workspace, WorkspaceRole } from '@prisma/client';
 import { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
 import { RefreshTokenDto } from './dto/refresh.dto';
 
-
-
 @Injectable()
 export class AuthService {
-
-   constructor(
-    private prisma:PrismaService,
+  constructor(
+    private prisma: PrismaService,
     private readonly usersService: UsersService,
 
     private readonly workspacesService: WorkspacesService,
 
     private readonly workspaceMembersService: WorkspaceMembersService,
-    
+
     private readonly tokenService: TokenService,
-   ){}
+  ) {}
 
   async register(dto: RegisterDto) {
-    const existingUser =await this.usersService.findByEmail(dto.email);
-    
-    if(existingUser){
+    const existingUser = await this.usersService.findByEmail(dto.email);
+
+    if (existingUser) {
       throw new EmailAlreadyExistsException();
     }
 
     const passwordHash = await hashPassword(dto.password);
     const slug = generateSlug(dto.workspaceName);
 
-    const result = await this.createUserWithWorkspace(
-      dto,
-      passwordHash,
-      slug,
-  );
+    const result = await this.createUserWithWorkspace(dto, passwordHash, slug);
 
     const tokens = await this.tokenService.generateToken(
       result.user.id,
@@ -63,29 +52,30 @@ export class AuthService {
       WorkspaceRole.OWNER,
     );
 
-  const refreshTokenHash = await this.tokenService.hashRefreshToken(tokens.refreshToken);
-   await this.usersService.updateRefreshToken(
-    result.user.id,
-    refreshTokenHash,
-  );
+    const refreshTokenHash = await this.tokenService.hashRefreshToken(
+      tokens.refreshToken,
+    );
+    await this.usersService.updateRefreshToken(
+      result.user.id,
+      refreshTokenHash,
+    );
 
-  return  this.buildAuthResponse(
-    result.user,
-    result.workspace,
-    tokens,
-  )
-  
-
+    return this.buildAuthResponse(result.user, result.workspace, tokens);
   }
 
   async login(dto: LoginDto) {
-    const existingUser = await this.usersService.findByEmailWithMemberships(dto.email);
+    const existingUser = await this.usersService.findByEmailWithMemberships(
+      dto.email,
+    );
 
-  if (!existingUser || !existingUser.passwordHash) {
+    if (!existingUser || !existingUser.passwordHash) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = await comparePassword(dto.password, existingUser.passwordHash);
+    const isPasswordValid = await comparePassword(
+      dto.password,
+      existingUser.passwordHash,
+    );
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
@@ -96,30 +86,36 @@ export class AuthService {
       throw new ForbiddenException('User does not belong to any workspace');
     }
 
-    const workspace=memberShip.workspace;
+    const workspace = memberShip.workspace;
     const role = memberShip.role;
 
     const tokens = await this.tokenService.generateToken(
       existingUser.id,
       existingUser.email,
       workspace.id,
-      role
+      role,
     );
 
-    const refreshTokenHash = await this.tokenService.hashRefreshToken(tokens.refreshToken);
-    await this.usersService.updateRefreshToken(existingUser.id, refreshTokenHash);
+    const refreshTokenHash = await this.tokenService.hashRefreshToken(
+      tokens.refreshToken,
+    );
+    await this.usersService.updateRefreshToken(
+      existingUser.id,
+      refreshTokenHash,
+    );
 
     return this.buildAuthResponse(existingUser, workspace, tokens);
-  
   }
 
   async refresh(payload: JwtPayload, dto: RefreshTokenDto) {
-   const existingUser = await this.usersService.findByIdWithMemberShips(payload.id);
-   
+    const existingUser = await this.usersService.findByIdWithMemberShips(
+      payload.id,
+    );
+
     if (!existingUser || !existingUser.refreshTokenHash) {
       throw new UnauthorizedException('Invalid credentials');
     }
-   
+
     const isRefreshTokenValid = await this.tokenService.compareRefreshToken(
       dto.refreshToken,
       existingUser.refreshTokenHash,
@@ -130,7 +126,7 @@ export class AuthService {
     }
 
     const memberShip = existingUser.memberships[0];
-     
+
     if (!memberShip) {
       throw new UnauthorizedException('User has no workspace membership');
     }
@@ -141,107 +137,107 @@ export class AuthService {
       existingUser.id,
       existingUser.email,
       workspaceId,
-      role
+      role,
     );
 
-    const refreshTokenHash = await this.tokenService.hashRefreshToken(tokens.refreshToken);
-    await this.usersService.updateRefreshToken(existingUser.id, refreshTokenHash);
+    const refreshTokenHash = await this.tokenService.hashRefreshToken(
+      tokens.refreshToken,
+    );
+    await this.usersService.updateRefreshToken(
+      existingUser.id,
+      refreshTokenHash,
+    );
 
     return {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
     };
-
-  
-
-
   }
 
   async logout(userId: string) {
     await this.usersService.updateRefreshToken(userId, '');
     return {
-    message: 'Logged out successfully',
-  };
+      message: 'Logged out successfully',
+    };
   }
 
-
   async me(userId: string) {
-  return this.usersService.findById(userId);
-}
-
+    return this.usersService.findById(userId);
+  }
 
   private async createUserWithWorkspace(
-  dto: RegisterDto,
-  passwordHash: string,
-  slug: string,
-) {
-  return this.prisma.$transaction(async (tx) => {
-    const user = await this.usersService.create(
-      {
-        email: dto.email,
-        passwordHash,
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-      },
-      tx,
-    );
+    dto: RegisterDto,
+    passwordHash: string,
+    slug: string,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const user = await this.usersService.create(
+        {
+          email: dto.email,
+          passwordHash,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+        },
+        tx,
+      );
 
-    const workspace = await this.workspacesService.create(
-      {
-        name: dto.workspaceName,
-        slug,
-      },
-      tx,
-    );
+      const workspace = await this.workspacesService.create(
+        {
+          name: dto.workspaceName,
+          slug,
+        },
+        tx,
+      );
 
-    await this.workspaceMembersService.create(
-      {
-        role: WorkspaceRole.OWNER,
+      await this.workspaceMembersService.create(
+        {
+          role: WorkspaceRole.OWNER,
 
-        user: {
-          connect: {
-            id: user.id,
+          user: {
+            connect: {
+              id: user.id,
+            },
+          },
+
+          workspace: {
+            connect: {
+              id: workspace.id,
+            },
           },
         },
+        tx,
+      );
 
-        workspace: {
-          connect: {
-            id: workspace.id,
-          },
-        },
-      },
-      tx,
-    );
+      return {
+        user,
+        workspace,
+      };
+    });
+  }
 
+  private buildAuthResponse(
+    user: User,
+    workspace: Workspace,
+    tokens: {
+      accessToken: string;
+      refreshToken: string;
+    },
+  ) {
     return {
-      user,
-      workspace,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
+
+      workspace: {
+        id: workspace.id,
+        name: workspace.name,
+        slug: workspace.slug,
+      },
+
+      tokens,
     };
-  });
+  }
 }
-
-   private buildAuthResponse(
-  user: User,
-  workspace: Workspace,
-  tokens: {
-    accessToken: string;
-    refreshToken: string;
-  },
-) {
-  return {
-    user: {
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-    },
-
-    workspace: {
-      id: workspace.id,
-      name: workspace.name,
-      slug: workspace.slug,
-    },
-
-    tokens,
-  };
-}}
