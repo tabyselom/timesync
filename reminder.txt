@@ -15,3 +15,142 @@ pnpm --filter api exec prisma migrate dev
 
 # Prisma Studio
 pnpm --filter api exec prisma studio
+
+
+
+✅ Phase 1 — Authentication (Done)
+✅ Register
+✅ Login
+✅ Refresh Token
+✅ Logout
+✅ JWT Guard
+✅ Current User Decorator
+✅ Roles Guard
+
+Status: ✔ Complete
+
+✅ Phase 2 — Workspace Management (Almost Done)
+✅ Create workspace (during registration)
+✅ Invite member
+✅ Leave workspace
+✅ Transfer ownership
+
+Still missing:
+
+⬜ Remove member
+⬜ Update member role
+⬜ List workspace members
+🚀 Phase 3 — Projects
+
+This is where TimeSync starts becoming a real application.
+
+User Story
+
+As a workspace member, I can create projects.
+
+You'll build:
+
+Project
+---------
+id
+name
+description
+status
+workspaceId
+createdBy
+createdAt
+updatedAt
+
+Endpoints:
+
+POST   /workspaces/:workspaceId/projects
+GET    /workspaces/:workspaceId/projects
+GET    /projects/:id
+PATCH  /projects/:id
+DELETE /projects/:id
+
+Things you'll practice:
+
+Relations
+Pagination
+Filtering
+Authorization
+🚀 Phase 4 — Tasks
+
+Now it becomes similar to Jira or ClickUp.
+
+Task
+---------
+title
+description
+priority
+status
+assignee
+projectId
+dueDate
+
+Endpoints:
+
+Create task
+Assign task
+Update task
+Delete task
+Move status
+
+This introduces more business logic.
+
+🚀 Phase 5 — Comments
+POST /tasks/:id/comments
+GET  /tasks/:id/comments
+DELETE
+
+You'll learn nested resources.
+
+🚀 Phase 6 — Notifications
+
+When someone:
+
+invites you
+assigns you a task
+comments on your task
+
+Create a notification.
+
+You'll learn:
+
+Events
+Background jobs
+RabbitMQ (later)
+🚀 Phase 7 — File Uploads
+
+Attach files to tasks.
+
+Learn:
+
+Multer
+Cloudinary/S3
+Validation
+🚀 Phase 8 — Email
+
+Send emails for:
+
+Invitation
+Password reset
+Workspace invite
+🚀 Phase 9 — Testing
+
+You'll learn:
+
+Unit tests
+Integration tests
+E2E tests
+🚀 Phase 10 — Production
+
+Deploy:
+
+API
+PostgreSQL
+Redis
+Frontend
+
+CI/CD with GitHub Actions.

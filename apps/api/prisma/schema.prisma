@@ -7,6 +7,7 @@
 generator client {
   provider = "prisma-client-js"
 }
+
 datasource db {
   provider = "postgresql"
 }
@@ -24,48 +25,48 @@ enum WorkspaceRole {
   MEMBER
 }
 
-
 model User {
-  id                String   @id @default(uuid())
-  email             String   @unique
-  passwordHash      String?
+  id           String  @id @default(uuid())
+  email        String  @unique
+  passwordHash String?
 
-  firstName         String
-  lastName          String
+  firstName String
+  lastName  String
 
-  avatarUrl         String?
+  avatarUrl String?
 
-  emailVerified     Boolean  @default(false)
+  emailVerified Boolean @default(false)
 
   provider          AuthProvider @default(LOCAL)
   providerAccountId String?
 
-  isActive          Boolean @default(true)
+  isActive Boolean @default(true)
 
-  refreshTokenHash  String?
+  refreshTokenHash String?
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  deletedAt         DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   memberships WorkspaceMember[]
 }
 
 model Workspace {
-  id          String @id @default(uuid())
+  id String @id @default(uuid())
 
-  name        String
-  slug        String @unique
+  name String
+  slug String @unique
 
-  logoUrl     String?
+  logoUrl String?
 
-  isActive    Boolean @default(true)
+  isActive Boolean @default(true)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   members WorkspaceMember[]
+  project Project[]
 }
 
 model WorkspaceMember {
@@ -73,7 +74,7 @@ model WorkspaceMember {
 
   role WorkspaceRole
 
-  userId String
+  userId      String
   workspaceId String
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -83,4 +84,21 @@ model WorkspaceMember {
   createdAt DateTime @default(now())
 
   @@unique([userId, workspaceId])
+}
+
+model Project {
+  id   String @id @default(uuid())
+  name String
+
+  description String?
+  slug        String
+
+  workspaceId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, slug])
 }

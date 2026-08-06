@@ -8,6 +8,7 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 import { WorkspaceMembersModule } from './workspace-members/workspace-members.module';
+import { ProjectsModule } from './projects/projects.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { WorkspaceMembersModule } from './workspace-members/workspace-members.mo
     AuthModule,
     WorkspacesModule,
     WorkspaceMembersModule,
+    ProjectsModule,
   ],
 })
 export class AppModule {}

@@ -46,14 +46,8 @@ export class WorkspaceMembersService {
       throw new NotFoundException('No user found with this email.');
     }
 
-    const existingMembership = await this.prisma.workspaceMember.findUnique({
-      where: {
-        userId_workspaceId: {
-          userId: user.id,
-          workspaceId,
-        },
-      },
-    });
+    const existingMembership = await this.findMembership(
+      workspaceId,user.id    );
 
     if (existingMembership) {
       throw new ConflictException(
@@ -87,14 +81,7 @@ export class WorkspaceMembersService {
     if (!workspace) {
       throw new NotFoundException('No Workspace found with this id.');
     }
-    const member = await this.prisma.workspaceMember.findUnique({
-      where: {
-        userId_workspaceId: {
-          userId: user.id,
-          workspaceId,
-        },
-      },
-    });
+    const member = await this.findMembership(workspaceId, user.id);
 
     if (!member) {
       throw new NotFoundException('User is not a member of this workspace.');
@@ -147,14 +134,7 @@ export class WorkspaceMembersService {
       );
     }
 
-    const member = await this.prisma.workspaceMember.findUnique({
-      where: {
-        userId_workspaceId: {
-          userId: dto.newOwnerId,
-          workspaceId,
-        },
-      },
-    });
+    const member = await this.findMembership(workspaceId, dto.newOwnerId);
 
     if (!member) {
       throw new NotFoundException('user is not member of this work space');
@@ -167,11 +147,73 @@ export class WorkspaceMembersService {
     return this.changeOwnership(workspaceId, dto.newOwnerId, user.id);
   }
 
+
+ async deleteMembership(user: JwtPayload, workspaceId: string, userId: string) {
+
+  if (user.id === userId) {
+    throw new ConflictException('Use the leave workspace endpoint instead.');
+  } 
+
+    const workspace = await this.workspacesService.findById(workspaceId);
+    if (!workspace) {
+      throw new NotFoundException('No Workspace found with this id.');
+    }
+
+    const member = await this.findMembership(workspaceId, user.id);
+
+    if (!member) {
+      throw new NotFoundException('You are not a member of this workspace.');
+    }
+
+    if (member.role === WorkspaceRole.MANAGER || member.role === WorkspaceRole.MEMBER) {
+      throw new ForbiddenException(
+        'Only workspace owners and admins can delete memberships.',
+      );
+    }
+
+    const targetMember = await this.findMembership(workspaceId, userId);
+
+    if (!targetMember) {
+      throw new NotFoundException('The specified user is not a member of this workspace.');
+    }
+
+    if (targetMember.role === WorkspaceRole.OWNER && member.role !== WorkspaceRole.OWNER) {
+      throw new ConflictException('You cannot delete the membership of the workspace owner.');
+    }
+
+    await this.prisma.workspaceMember.delete({
+      where: {
+        userId_workspaceId: {
+          userId,
+          workspaceId,
+        },
+      },
+    });
+
+    return {
+      message: 'Membership deleted successfully.',
+    };
+  
+ }
+
+
+
   async ownerCount(workspaceId: string) {
     return await this.prisma.workspaceMember.count({
       where: {
         workspaceId,
         role: WorkspaceRole.OWNER,
+      },
+    });
+  }
+
+  async findMembership(workspaceId: string, userId: string) {
+    return this.prisma.workspaceMember.findUnique({
+      where: {
+        userId_workspaceId: {
+          userId,
+          workspaceId,
+        },
       },
     });
   }

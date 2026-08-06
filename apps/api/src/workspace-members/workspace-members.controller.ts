@@ -46,6 +46,17 @@ export class WorkspaceMembersController {
     return this.workspaceMembersService.leaveWorkspace(workspaceId, user);
   }
 
+  @Delete('members/:userId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
+  deleteMembership(
+    @Param('workspaceId') workspaceId: string,
+    @Param('userId') userId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.workspaceMembersService.deleteMembership(user,workspaceId, userId);
+  }
+
   @Patch('transfer-ownership')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(WorkspaceRole.OWNER)
