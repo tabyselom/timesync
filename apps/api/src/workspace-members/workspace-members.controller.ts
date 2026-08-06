@@ -6,6 +6,7 @@ import {
   UseGuards,
   Delete,
   Patch,
+  Get,
 } from '@nestjs/common';
 import { WorkspaceMembersService } from './workspace-members.service';
 
@@ -26,6 +27,15 @@ export class WorkspaceMembersController {
   constructor(
     private readonly workspaceMembersService: WorkspaceMembersService,
   ) {}
+
+  @Get('members')
+  @UseGuards(JwtAuthGuard)
+  listMember(
+    @Param('workspaceId') workspaceId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.workspaceMembersService.listMember(workspaceId, user.id);
+  }
 
   @Post('invite')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -54,7 +64,11 @@ export class WorkspaceMembersController {
     @Param('userId') userId: string,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.workspaceMembersService.deleteMembership(user,workspaceId, userId);
+    return this.workspaceMembersService.deleteMembership(
+      user,
+      workspaceId,
+      userId,
+    );
   }
 
   @Patch('transfer-ownership')
@@ -69,6 +83,23 @@ export class WorkspaceMembersController {
       workspaceId,
       user,
       dto,
+    );
+  }
+
+  @Patch('members/:userId/role/:role')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
+  changeMemberRole(
+    @Param('workspaceId') workspaceId: string,
+    @Param('userId') userId: string,
+    @Param('role') role: WorkspaceRole,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.workspaceMembersService.changeMemberRole(
+      workspaceId,
+      userId,
+      role,
+      user,
     );
   }
 }

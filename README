@@ -1,0 +1,6 @@
+Ownership Transfer Policy
+
+The current owner is automatically demoted to ADMIN.
+The new owner is promoted to OWNER.
+Ownership cannot be abandoned.
+Owners cannot be removed directly. Ownership must be transferred first.
