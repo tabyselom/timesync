@@ -25,6 +25,21 @@ enum WorkspaceRole {
   MEMBER
 }
 
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 model User {
   id           String  @id @default(uuid())
   email        String  @unique
@@ -49,6 +64,9 @@ model User {
   deletedAt DateTime?
 
   memberships WorkspaceMember[]
+  projectsCreated Project[]
+  tasks Task[] @relation("createdTasks")
+  assignedTasks  Task[] @relation("assignedTasks")
 }
 
 model Workspace {
@@ -89,16 +107,47 @@ model WorkspaceMember {
 model Project {
   id   String @id @default(uuid())
   name String
-
   description String?
   slug        String
 
   workspaceId String
+  createdById String
+  tasks Task[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  deletedAt DateTime?
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdById], references: [id])
 
   @@unique([workspaceId, slug])
+  @@unique([workspaceId, name])
 }
+
+model Task{
+  id String @id @default(uuid())
+  title String
+  description String?
+  assignedToId String?
+  status TaskStatus @default(TODO)
+  priority TaskPriority @default(MEDIUM)
+  dueDate DateTime?
+  projectId String
+  createdById String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User @relation("createdTasks", fields: [createdById], references: [id])
+  assignedTo User? @relation("assignedTasks",fields: [assignedToId], references: [id])  
+
+  @@index([projectId, status])
+  @@index([assignedToId])
+}
+
+
+

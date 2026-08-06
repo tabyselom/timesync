@@ -16,6 +16,15 @@ pnpm --filter api exec prisma migrate dev
 # Prisma Studio
 pnpm --filter api exec prisma studio
 
+Stop-Service -Name "postgresql*"
+Get-Service -Name "postgresql*"
+
+pnpm --filter api exec prisma migrate dev --name update_projects
+pnpm --filter api exec  prisma generate  
+
+
+pnpm --filter api exec nest g controller  tasks --no-spec
+
 
 
 ✅ Phase 1 — Authentication (Done)
@@ -34,12 +43,9 @@ Status: ✔ Complete
 ✅ Invite member
 ✅ Leave workspace
 ✅ Transfer ownership
-
-Still missing:
-
-⬜ Remove member
-⬜ Update member role
-⬜ List workspace members
+✅ Remove member
+✅ Update member role
+✅ List workspace members
 🚀 Phase 3 — Projects
 
 This is where TimeSync starts becoming a real application.
@@ -63,11 +69,11 @@ updatedAt
 
 Endpoints:
 
-POST   /workspaces/:workspaceId/projects
-GET    /workspaces/:workspaceId/projects
-GET    /projects/:id
-PATCH  /projects/:id
-DELETE /projects/:id
+✅POST   /workspaces/:workspaceId/projects  create project
+✅GET    /workspaces/:workspaceId/projects  get projects
+✅GET    /projects/:id
+✅PATCH  /projects/:id
+✅DELETE /projects/:id
 
 Things you'll practice:
 
@@ -75,6 +81,8 @@ Relations
 Pagination
 Filtering
 Authorization
+
+
 🚀 Phase 4 — Tasks
 
 Now it becomes similar to Jira or ClickUp.
@@ -91,7 +99,7 @@ dueDate
 
 Endpoints:
 
-Create task
+✅Create task
 Assign task
 Update task
 Delete task

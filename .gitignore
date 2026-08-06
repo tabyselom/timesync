@@ -106,6 +106,7 @@ apps/extension/dist/
 apps/extension/.vite/
 apps/extension/.output/
 
+reminder.txt
 # ==========================
 # Misc
 # ==========================

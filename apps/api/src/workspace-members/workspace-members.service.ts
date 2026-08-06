@@ -34,7 +34,7 @@ export class WorkspaceMembersService {
     });
   }
 
-  async listMember(workspaceId:string, userId: string) {
+   async listMember(workspaceId:string, userId: string) {
     const workspace = await this.workspacesService.findById(workspaceId);
     if (!workspace) {
       throw new NotFoundException('No Workspace found with this id.');
@@ -53,6 +53,7 @@ export class WorkspaceMembersService {
       select: {
         userId: true,
         role: true,
+        createdAt: true,
         user: {
           select: {
             id: true,
@@ -60,7 +61,6 @@ export class WorkspaceMembersService {
             firstName: true,
             lastName: true,
           },
-          createdAt: true,
         },
       },
     });
