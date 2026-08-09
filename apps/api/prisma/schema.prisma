@@ -57,7 +57,7 @@ model User {
 
   isActive Boolean @default(true)
 
-  refreshTokenHash String?
+  
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -65,6 +65,8 @@ model User {
 
   memberships WorkspaceMember[]
   projectsCreated Project[]
+  refreshTokens RefreshToken[]
+
   tasks Task[] @relation("createdTasks")
   assignedTasks  Task[] @relation("assignedTasks")
 }
@@ -73,6 +75,7 @@ model Workspace {
   id String @id @default(uuid())
 
   name String
+
   slug String @unique
 
   logoUrl String?
@@ -147,6 +150,20 @@ model Task{
 
   @@index([projectId, status])
   @@index([assignedToId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  tokenHash String
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 

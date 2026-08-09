@@ -1,11 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 
 import { UsersService } from '../users/users.service';
-import { WorkspacesService } from '../workspaces/workspaces.service';
-import { WorkspaceMembersService } from '../workspace-members/workspace-members.service';
+import { RefreshTokenService } from './refresh-token.service';
 import { TokenService } from './token.service';
 
 import { RegisterDto } from './dto/register.dto';
@@ -14,9 +13,8 @@ import { LoginDto } from './dto/login.dto';
 import { EmailAlreadyExistsException } from '../common/exceptions/conflict.exception';
 
 import { comparePassword, hashPassword } from '../common/utils/password.util';
-import { generateSlug } from '../common/utils/slug.util';
 
-import { User, Workspace, WorkspaceRole } from '@prisma/client';
+import { User } from '@prisma/client';
 import { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
 import { RefreshTokenDto } from './dto/refresh.dto';
 
@@ -25,12 +23,8 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private readonly usersService: UsersService,
-
-    private readonly workspacesService: WorkspacesService,
-
-    private readonly workspaceMembersService: WorkspaceMembersService,
-
     private readonly tokenService: TokenService,
+    private readonly refreshTokenService: RefreshTokenService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -41,25 +35,21 @@ export class AuthService {
     }
 
     const passwordHash = await hashPassword(dto.password);
-    
-     const user = await this.createUser(dto, passwordHash);
 
+    const user = await this.createUser(dto, passwordHash);
 
+    const tokens = await this.tokenService.generateToken(user.id, user.email);
 
-     const tokens = await this.tokenService.generateToken(
-       user.id,
-       user.email
-     );
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
-     const refreshTokenHash = await this.tokenService.hashRefreshToken(
-       tokens.refreshToken,
-     );
-     await this.usersService.updateRefreshToken(
-       user.id,
-       refreshTokenHash,
-     );
+    await this.refreshTokenService.create(
+      user.id,
+      tokens.refreshToken,
+      expiresAt,
+    );
 
-     return this.buildAuthResponse(user, tokens);
+    return this.buildAuthResponse(user, tokens);
   }
 
   async login(dto: LoginDto) {
@@ -80,74 +70,116 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const memberShip = existingUser.memberships[0];
-    let tokens ;
-    if (memberShip){
-           tokens = await this.tokenService.generateToken(
-             existingUser.id,
-             existingUser.email,
-             memberShip.workspaceId,
-             memberShip.role
-           );
-    }else{
-      tokens = await this.tokenService.generateToken(
-        existingUser.id,
-        existingUser.email,
-      );
-    }
+    const tokens = await this.tokenService.generateToken(existingUser.id, existingUser.email);
 
-    
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
-    const refreshTokenHash = await this.tokenService.hashRefreshToken(
-      tokens.refreshToken,
-    );
-    await this.usersService.updateRefreshToken(
+    await this.refreshTokenService.create(
       existingUser.id,
-      refreshTokenHash,
+      tokens.refreshToken,
+      expiresAt,
     );
 
     return this.buildAuthResponse(existingUser, tokens);
   }
 
-  async refresh(payload: JwtPayload, dto: RefreshTokenDto) {
-    const existingUser = await this.usersService.findByIdWithMemberShips(
-      payload.id,
-    );
+  async selectWorkspace(userId: string, workspaceId: string) {
+    const membership = await this.prisma.workspaceMember.findUnique({
+      where: {
+        userId_workspaceId: {
+          userId,
+          workspaceId,
+        },
+      },
+    });
 
-    if (!existingUser || !existingUser.refreshTokenHash) {
-      throw new UnauthorizedException('Invalid credentials');
+    if (!membership) {
+      throw new ForbiddenException('You are not a member of this workspace.');
     }
 
-    const isRefreshTokenValid = await this.tokenService.compareRefreshToken(
-      dto.refreshToken,
-      existingUser.refreshTokenHash,
-    );
+    const user = await this.usersService.findById(userId);
 
-    if (!isRefreshTokenValid) {
-      throw new UnauthorizedException('Invalid credentials');
+    if (!user) {
+      throw new UnauthorizedException('User not found.');
     }
-
-    const memberShip = existingUser.memberships[0];
-
-    if (!memberShip) {
-      throw new UnauthorizedException('User has no workspace membership');
-    }
-    const role = memberShip.role;
-    const workspaceId = memberShip.workspaceId;
 
     const tokens = await this.tokenService.generateToken(
-      existingUser.id,
-      existingUser.email,
-      workspaceId,
-      role,
+      user.id,
+      user.email,
+      membership.workspaceId,
+      membership.role,
     );
 
-    const refreshTokenHash = await this.tokenService.hashRefreshToken(
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    await this.refreshTokenService.create(
+      user.id,
       tokens.refreshToken,
+      expiresAt,
     );
-    await this.usersService.updateRefreshToken(
-      existingUser.id,
-      refreshTokenHash,
+
+    return {
+      message: 'Workspace selected successfully.',
+      workspace: {
+        id: membership.workspaceId,
+        role: membership.role,
+      },
+      tokens,
+    };
+  }
+  async refresh(payload: JwtPayload, dto: RefreshTokenDto) {
+    const user = await this.usersService.findByIdWithMemberShips(payload.id);
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Find and validate the refresh-token session
+    const storedToken = await this.refreshTokenService.validate(
+      user.id,
+      dto.refreshToken,
+    );
+
+    let tokens;
+
+    // If this refresh token belongs to a workspace session,
+    // verify that the membership still exists.
+    if (payload.workspaceId) {
+      const membership = user.memberships.find(
+        (membership) => membership.workspaceId === payload.workspaceId,
+      );
+
+      if (!membership) {
+        throw new UnauthorizedException(
+          'Workspace membership is no longer valid.',
+        );
+      }
+
+      tokens = await this.tokenService.generateToken(
+        user.id,
+        user.email,
+        membership.workspaceId,
+        membership.role,
+      );
+    } else {
+      // User has no selected workspace.
+      tokens = await this.tokenService.generateToken(user.id, user.email);
+    }
+
+    // Rotate refresh token:
+    // old token can no longer be used.
+    await this.refreshTokenService.revoke(storedToken.id);
+
+    // Store the new refresh token.
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    await this.refreshTokenService.create(
+      user.id,
+      tokens.refreshToken,
+      expiresAt,
     );
 
     return {
@@ -155,9 +187,8 @@ export class AuthService {
       refreshToken: tokens.refreshToken,
     };
   }
-
   async logout(userId: string) {
-    await this.usersService.updateRefreshToken(userId, '');
+    await this.refreshTokenService.revokeAll(userId);
     return {
       message: 'Logged out successfully',
     };
@@ -167,7 +198,7 @@ export class AuthService {
     return this.usersService.findById(userId);
   }
 
-  private async createUser(dto: RegisterDto, passwordHash: string){
+  private async createUser(dto: RegisterDto, passwordHash: string) {
     const data = {
       email: dto.email,
       passwordHash,
@@ -175,11 +206,11 @@ export class AuthService {
       lastName: dto.lastName,
     };
 
-   const user= await this.prisma.user.create({
-      data
-    })
+    const user = await this.prisma.user.create({
+      data,
+    });
 
-    return  user;
+    return user;
   }
 
   private buildAuthResponse(

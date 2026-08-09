@@ -9,8 +9,8 @@ import { WorkspaceRole } from '@prisma/client';
 
 import { ROLES_KEY } from '../decorators/roles/roles.decorator';
 
-import { Request } from 'express';
-import { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
+import type { Request } from 'express';
+import type { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
 
 type AuthenticatedRequest = Request & {
   user: JwtPayload;
@@ -26,25 +26,29 @@ export class RolesGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    // No @Roles() decorator
     if (!requiredRoles) {
       return true;
     }
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+
     const user = request.user;
 
     if (!user) {
       throw new ForbiddenException('User not found.');
     }
-
-    
-
-    if (!requiredRoles.includes(user.role)) {
+    if (!user.workspaceId || !user.role) {
       throw new ForbiddenException(
-        'You do not have permission to perform this action.',
+        'No workspace has been selected.',
       );
     }
+       if (!requiredRoles.includes(user.role)) {
+         throw new ForbiddenException(
+           'You do not have permission to perform this action.',
+         );
+       }
+    
+   
 
     return true;
   }

@@ -13,6 +13,7 @@ import { WorkspacesModule } from 'src/workspaces/workspaces.module';
 
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
+import { RefreshTokenService } from './refresh-token.service';
 
 @Module({
   imports: [
@@ -39,6 +40,12 @@ import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
 
   exports: [TokenService],
 
-  providers: [AuthService, TokenService, JwtStrategy, RefreshTokenStrategy],
+  providers: [
+    AuthService,
+    TokenService,
+    JwtStrategy,
+    RefreshTokenStrategy,
+    RefreshTokenService,
+  ],
 })
 export class AuthModule {}

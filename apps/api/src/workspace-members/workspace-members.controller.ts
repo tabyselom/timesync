@@ -7,6 +7,7 @@ import {
   Delete,
   Patch,
   Get,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { WorkspaceMembersService } from './workspace-members.service';
 
@@ -17,7 +18,9 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { WorkspaceRole } from '@prisma/client';
 import { CurrentUser } from 'src/auth/decorators/current-user/current-user.decorator';
 import type { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
-import { transferOwnership } from './dto/transfer-ownership.dto';
+import { TransferOwnership } from './dto/transfer-ownership.dto';
+import { ChangeMemberRoleDto } from './dto/change_member_role_dto';
+import { WorkspaceGuard } from 'src/auth/guards/workspace.guard';
 
 @Controller({
   path: 'workspaces/:workspaceId',
@@ -29,7 +32,7 @@ export class WorkspaceMembersController {
   ) {}
 
   @Get('members')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, WorkspaceGuard)
   listMember(
     @Param('workspaceId') workspaceId: string,
     @CurrentUser() user: JwtPayload,
@@ -38,19 +41,20 @@ export class WorkspaceMembersController {
   }
 
   @Post('invite')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, WorkspaceGuard)
   @Roles(WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
   inviteMember(
     @Param('workspaceId') workspaceId: string,
     @Body() dto: InviteMemberDto,
+    @CurrentUser() user: JwtPayload,
   ) {
-    return this.workspaceMembersService.invite(workspaceId, dto);
+    return this.workspaceMembersService.invite(workspaceId, dto, user.id);
   }
 
   @Delete('leave')
   @UseGuards(JwtAuthGuard)
   leaveWorkspace(
-    @Param('workspaceId') workspaceId: string,
+    @Param('workspaceId', new ParseUUIDPipe()) workspaceId: string,
     @CurrentUser() user: JwtPayload,
   ) {
     return this.workspaceMembersService.leaveWorkspace(workspaceId, user);
@@ -61,7 +65,7 @@ export class WorkspaceMembersController {
   @Roles(WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
   deleteMembership(
     @Param('workspaceId') workspaceId: string,
-    @Param('userId') userId: string,
+    @Param('userId', new ParseUUIDPipe()) userId: string,
     @CurrentUser() user: JwtPayload,
   ) {
     return this.workspaceMembersService.deleteMembership(
@@ -75,9 +79,9 @@ export class WorkspaceMembersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(WorkspaceRole.OWNER)
   transferOwnership(
-    @Param('workspaceId') workspaceId: string,
+    @Param('workspaceId', new ParseUUIDPipe()) workspaceId: string,
     @CurrentUser() user: JwtPayload,
-    @Body() dto: transferOwnership,
+    @Body() dto: TransferOwnership,
   ) {
     return this.workspaceMembersService.transferOwnership(
       workspaceId,
@@ -86,19 +90,19 @@ export class WorkspaceMembersController {
     );
   }
 
-  @Patch('members/:userId/role/:role')
+  @Patch('members/:userId/role')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(WorkspaceRole.ADMIN, WorkspaceRole.OWNER)
   changeMemberRole(
-    @Param('workspaceId') workspaceId: string,
-    @Param('userId') userId: string,
-    @Param('role') role: WorkspaceRole,
+    @Param('workspaceId', new ParseUUIDPipe()) workspaceId: string,
+    @Param('userId', new ParseUUIDPipe()) userId: string,
+    @Body() dto: ChangeMemberRoleDto,
     @CurrentUser() user: JwtPayload,
   ) {
     return this.workspaceMembersService.changeMemberRole(
       workspaceId,
       userId,
-      role,
+      dto,
       user,
     );
   }

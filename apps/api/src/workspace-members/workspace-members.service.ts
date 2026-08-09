@@ -14,7 +14,8 @@ import { Tx } from '../prisma/prisma.types';
 
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
-import { transferOwnership } from './dto/transfer-ownership.dto';
+import { TransferOwnership } from './dto/transfer-ownership.dto';
+import { ChangeMemberRoleDto } from './dto/change_member_role_dto';
 
 @Injectable()
 export class WorkspaceMembersService {
@@ -34,7 +35,7 @@ export class WorkspaceMembersService {
     });
   }
 
-   async listMember(workspaceId:string, userId: string) {
+  async listMember(workspaceId: string, userId: string) {
     const workspace = await this.workspacesService.findById(workspaceId);
     if (!workspace) {
       throw new NotFoundException('No Workspace found with this id.');
@@ -65,21 +66,41 @@ export class WorkspaceMembersService {
     });
   }
 
-
-  async invite(workspaceId: string, dto: InviteMemberDto) {
+  async invite(workspaceId: string, dto: InviteMemberDto, userId: string) {
     const workspace = await this.workspacesService.findById(workspaceId);
 
     if (!workspace) {
       throw new NotFoundException('No Workspace found with this id.');
     }
 
+    const currentMember = await this.findMembership(workspaceId, userId);
+
+    if (!currentMember) {
+      throw new ForbiddenException('You are not a member of this workspace.');
+    }
+
+    if (
+      currentMember.role !== WorkspaceRole.ADMIN &&
+      currentMember.role !== WorkspaceRole.OWNER
+    ) {
+      throw new ForbiddenException(
+        'Only workspace owners and admins can invite members.',
+      );
+    }
+
+    if (dto.role === WorkspaceRole.OWNER) {
+      throw new ConflictException(
+        'Use the transfer ownership endpoint to assign ownership.',
+      );
+    }
+
     const user = await this.usersService.findByEmail(dto.email);
+
     if (!user) {
       throw new NotFoundException('No user found with this email.');
     }
 
-    const existingMembership = await this.findMembership(
-      workspaceId,user.id    );
+    const existingMembership = await this.findMembership(workspaceId, user.id);
 
     if (existingMembership) {
       throw new ConflictException(
@@ -87,7 +108,7 @@ export class WorkspaceMembersService {
       );
     }
 
-    const data = {
+    const member = await this.create({
       role: dto.role,
       user: {
         connect: {
@@ -99,9 +120,8 @@ export class WorkspaceMembersService {
           id: workspaceId,
         },
       },
-    };
+    });
 
-    const member = await this.create(data);
     return {
       message: 'Member invited successfully.',
       member,
@@ -145,7 +165,7 @@ export class WorkspaceMembersService {
   async transferOwnership(
     workspaceId: string,
     user: JwtPayload,
-    dto: transferOwnership,
+    dto: TransferOwnership,
   ) {
     const workspace = await this.workspacesService.findById(workspaceId);
     if (!workspace) {
@@ -179,11 +199,14 @@ export class WorkspaceMembersService {
     return this.changeOwnership(workspaceId, dto.newOwnerId, user.id);
   }
 
- async deleteMembership(user: JwtPayload, workspaceId: string, userId: string) {
-
-  if (user.id === userId) {
-    throw new ConflictException('Use the leave workspace endpoint instead.');
-  } 
+  async deleteMembership(
+    user: JwtPayload,
+    workspaceId: string,
+    userId: string,
+  ) {
+    if (user.id === userId) {
+      throw new ConflictException('Use the leave workspace endpoint instead.');
+    }
 
     const workspace = await this.workspacesService.findById(workspaceId);
     if (!workspace) {
@@ -196,7 +219,10 @@ export class WorkspaceMembersService {
       throw new NotFoundException('You are not a member of this workspace.');
     }
 
-    if (member.role === WorkspaceRole.MANAGER || member.role === WorkspaceRole.MEMBER) {
+    if (
+      member.role === WorkspaceRole.MANAGER ||
+      member.role === WorkspaceRole.MEMBER
+    ) {
       throw new ForbiddenException(
         'Only workspace owners and admins can delete memberships.',
       );
@@ -205,11 +231,22 @@ export class WorkspaceMembersService {
     const targetMember = await this.findMembership(workspaceId, userId);
 
     if (!targetMember) {
-      throw new NotFoundException('The specified user is not a member of this workspace.');
+      throw new NotFoundException(
+        'The specified user is not a member of this workspace.',
+      );
     }
 
-    if (targetMember.role === WorkspaceRole.OWNER && member.role !== WorkspaceRole.OWNER) {
-      throw new ConflictException('You cannot delete the membership of the workspace owner.');
+    if (
+      member.role !== WorkspaceRole.OWNER
+    ) {
+      throw new ConflictException(
+        'You cannot delete the membership of the workspace owner.',
+      );
+    }
+    if (targetMember.role === WorkspaceRole.OWNER) {
+      throw new ConflictException(
+        'Transfer ownership before removing an owner.',
+      );
     }
 
     await this.prisma.workspaceMember.delete({
@@ -224,24 +261,20 @@ export class WorkspaceMembersService {
     return {
       message: 'Membership deleted successfully.',
     };
-  
- }
+  }
 
   async changeMemberRole(
     workspaceId: string,
     userId: string,
-    role: WorkspaceRole,
-    user: JwtPayload
+    dto: ChangeMemberRoleDto,
+    user: JwtPayload,
   ) {
-
-   
-
-    if (role === WorkspaceRole.OWNER) {
+    if (dto.role === WorkspaceRole.OWNER) {
       throw new ConflictException('Use the transfer ownership endpoint.');
     }
-     if (user.id === userId) {
-       throw new ConflictException('You cannot change your own role.');
-     }
+    if (user.id === userId) {
+      throw new ConflictException('You cannot change your own role.');
+    }
     const workspace = await this.workspacesService.findById(workspaceId);
     if (!workspace) {
       throw new NotFoundException('No Workspace found with this id.');
@@ -253,8 +286,7 @@ export class WorkspaceMembersService {
       throw new NotFoundException('You are not a member of this workspace.');
     }
 
-    if (member.role !== WorkspaceRole.OWNER
-    ) {
+    if (member.role !== WorkspaceRole.OWNER) {
       throw new ForbiddenException(
         'Only workspace owners  can change member roles.',
       );
@@ -263,18 +295,19 @@ export class WorkspaceMembersService {
     const targetMember = await this.findMembership(workspaceId, userId);
 
     if (!targetMember) {
-      throw new NotFoundException('The specified user is not a member of this workspace.');
+      throw new NotFoundException(
+        'The specified user is not a member of this workspace.',
+      );
     }
     if (targetMember.role === WorkspaceRole.OWNER) {
       throw new ConflictException('Use the transfer ownership endpoint.');
     }
 
-    if(targetMember.role === role){
+    if (targetMember.role === dto.role) {
       throw new ConflictException('The specified user already has this role.');
     }
 
-
-    await this.prisma.workspaceMember.update({
+    const updatedMember= await this.prisma.workspaceMember.update({
       where: {
         userId_workspaceId: {
           userId,
@@ -282,16 +315,16 @@ export class WorkspaceMembersService {
         },
       },
       data: {
-        role,
+        role: dto.role,
       },
     });
 
-    return {
-      message: 'Member role changed successfully.',
-      member
-    };
+   return {
+     message: 'Member role changed successfully.',
+     member: updatedMember,
+   };
   }
- 
+
   async ownerCount(workspaceId: string) {
     return await this.prisma.workspaceMember.count({
       where: {

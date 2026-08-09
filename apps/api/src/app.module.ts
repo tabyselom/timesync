@@ -11,8 +11,16 @@ import { WorkspaceMembersModule } from './workspace-members/workspace-members.mo
 import { ProjectsModule } from './projects/projects.module';
 import { TasksModule } from './tasks/tasks.module';
 
+import { ThrottlerModule } from '@nestjs/throttler';  
+
 @Module({
   imports: [
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60_000,
+        limit: 100,
+      },
+    ]),
     ConfigModule.forRoot({
       isGlobal: true,
       load: [jwt],

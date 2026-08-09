@@ -1,6 +1,6 @@
 import { IsString } from "class-validator";
 
-export class transferOwnership {
+export class TransferOwnership {
   @IsString()
   newOwnerId: string;
 }

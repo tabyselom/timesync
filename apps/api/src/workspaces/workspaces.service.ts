@@ -1,11 +1,11 @@
-import { Injectable, ConflictException } from '@nestjs/common';
-import { Prisma, Workspace, WorkspaceRole } from '@prisma/client';
+import { Injectable } from '@nestjs/common';
+import { WorkspaceRole } from '@prisma/client';
 
 import { PrismaService } from '../prisma/prisma.service';
-import { Tx } from '../prisma/prisma.types';
+
 import { CreateWorkspaceDto } from './dto/create_workspace.dto';
 import { JwtPayload } from 'src/common/interfaces/jwt-payload.interface';
-import { generate } from 'rxjs';
+
 import { generateSlug } from 'src/common/utils/slug.util';
 
 @Injectable()
@@ -36,8 +36,7 @@ export class WorkspacesService {
         name: workspace.name,
         slug: workspace.slug, // Return the slug to the client!
         createdAt: workspace.createdAt,
-      },
-      owner: user.id,
+      }
     };
   }
   async findById(id: string) {

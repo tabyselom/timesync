@@ -25,10 +25,4 @@ export class RegisterDto {
   @MinLength(8)
   @MaxLength(100)
   password: string;
-
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(100)
-  @IsOptional()
-  workspaceName?: string;
 }

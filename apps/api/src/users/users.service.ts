@@ -26,17 +26,17 @@ export class UsersService {
     });
   }
 
-  async updateRefreshToken(
-    userId: string,
-    refreshToken: string | null,
-  ): Promise<void> {
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        refreshTokenHash: refreshToken,
-      },
-    });
-  }
+  // async updateRefreshToken(
+  //   userId: string,
+  //   refreshToken: string | null,
+  // ): Promise<void> {
+  //   await this.prisma.user.update({
+  //     where: { id: userId },
+  //     data: {
+  //       refreshTokenHash: refreshToken,
+  //     },
+  //   });
+  // }
 
   async findByEmailWithMemberships(email: string) {
     return this.prisma.user.findUnique({

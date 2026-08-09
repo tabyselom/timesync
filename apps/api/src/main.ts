@@ -7,12 +7,19 @@ import {
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 import { AppModule } from './app.module';
+import helmet from '@fastify/helmet';
+
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter(),
   );
+
+  await app.register(helmet as any, {
+    contentSecurityPolicy: false,
+  });
 
   app.setGlobalPrefix('api');
 
@@ -29,19 +36,31 @@ async function bootstrap() {
     }),
   );
 
+  app.useGlobalFilters(new HttpExceptionFilter());
+
   app.enableCors({
-    origin: ['http://localhost:3000'],
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   });
+
+   
 
   const config = new DocumentBuilder()
     .setTitle('TimeSync API')
     .setDescription('TimeSync Backend API')
     .setVersion('1.0.0')
-    .addBearerAuth()
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+      'access-token',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
+
 
   SwaggerModule.setup('api/docs', app, document);
 

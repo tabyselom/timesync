@@ -4,6 +4,8 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseUUIDPipe,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -20,6 +22,7 @@ import type { JwtPayload } from './../common/interfaces/jwt-payload.interface';
 
 import { RefreshTokenDto } from './dto/refresh.dto';
 import { Roles } from './decorators/roles/roles.decorator';
+import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Authentication')
 @Controller({
@@ -30,16 +33,43 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @Throttle({
+    default: {
+      limit: 3,
+      ttl: 60_000,
+    },
+  })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
   @Post('login')
+  @Throttle({
+    default: {
+      limit: 5,
+      ttl: 60_000,
+    },
+  })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }
 
+  @Post('workspaces/:workspaceId/select')
+  @UseGuards(JwtAuthGuard)
+  selectWorkspace(
+    @Param('workspaceId', new ParseUUIDPipe()) workspaceId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.authService.selectWorkspace(user.id, workspaceId);
+  }
+
   @Post('refresh')
+  @Throttle({
+    default: {
+      limit: 10,
+      ttl: 60_000,
+    },
+  })
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

@@ -162,3 +162,30 @@ Redis
 Frontend
 
 CI/CD with GitHub Actions.
+
+
+
+
+
+Before adding more features, I'd move to hardening the API:
+
+Workspace selection / switching
+    User can belong to multiple workspaces.
+    Generate a new token when switching workspace context.
+Authorization cleanup
+    Make sure every endpoint checks:
+    user → workspace membership → role → resource
+Validation
+    Make sure DTOs reject invalid UUIDs, dates, enums, empty strings, etc.
+Slug handling
+    Handle duplicate workspace/project slugs cleanly.
+Soft-delete behavior
+    Ensure deleted projects/tasks never appear in normal queries.
+Global error handling
+    Consistent response format for 400, 401, 403, 404, 409, etc.
+Refresh-token security
+    Test expired refresh tokens, invalid refresh tokens, logout, and token rotation.
+API documentation
+    Add Swagger/OpenAPI so you can test the whole backend easily.
+Automated tests
+    Start with authentication, workspace authorization, projects, and tasks.
