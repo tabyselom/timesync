@@ -51,9 +51,6 @@ export class WorkspaceMembersService {
         workspaceId,
       },
       select: {
-        userId: true,
-        role: true,
-        createdAt: true,
         user: {
           select: {
             id: true,
@@ -62,6 +59,8 @@ export class WorkspaceMembersService {
             lastName: true,
           },
         },
+        role: true,
+        createdAt: true,
       },
     });
   }
@@ -235,13 +234,14 @@ export class WorkspaceMembersService {
     user: JwtPayload
   ) {
 
-    if (user.id === userId) {
-      throw new ConflictException('You cannot change your own role.');
-    }
+   
 
     if (role === WorkspaceRole.OWNER) {
       throw new ConflictException('Use the transfer ownership endpoint.');
     }
+     if (user.id === userId) {
+       throw new ConflictException('You cannot change your own role.');
+     }
     const workspace = await this.workspacesService.findById(workspaceId);
     if (!workspace) {
       throw new NotFoundException('No Workspace found with this id.');

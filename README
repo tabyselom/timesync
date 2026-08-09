@@ -38,3 +38,11 @@ Owners cannot be removed directly. Ownership must be transferred first.
 | Change due date  |    ❌    |       ❌       |    ✅    |   ✅   |   ✅   |
 | Change status    |    ✅    |       ✅       |    ✅    |   ✅   |   ✅   |
 | Delete task      |    ❌    |       ❌       |    ✅    |   ✅   |   ✅   |
+
+
+| Action        | Creator | Assigned | Admin | Owner | Manager | Member |
+| ------------- | ------: | -------: | ----: | ----: | ------: | -----: |
+| Create task   |      ❌ |     ❌ |   ✅ |    ✅ |     ❌ |     ❌ |
+| Update task   |      ✅ |     ❌ |   ✅ |    ✅ |     ❌ |     ❌ |
+| Change status |      ✅ |     ✅ |   ✅ |    ✅ |     ❌ |     ❌ |
+| Delete task   |      ✅ |     ❌ |   ✅ |    ✅ |     ❌ |     ❌ |

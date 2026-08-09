@@ -41,26 +41,25 @@ export class AuthService {
     }
 
     const passwordHash = await hashPassword(dto.password);
-    const slug = generateSlug(dto.workspaceName);
+    
+     const user = await this.createUser(dto, passwordHash);
 
-    const result = await this.createUserWithWorkspace(dto, passwordHash, slug);
 
-    const tokens = await this.tokenService.generateToken(
-      result.user.id,
-      result.user.email,
-      result.workspace.id,
-      WorkspaceRole.OWNER,
-    );
 
-    const refreshTokenHash = await this.tokenService.hashRefreshToken(
-      tokens.refreshToken,
-    );
-    await this.usersService.updateRefreshToken(
-      result.user.id,
-      refreshTokenHash,
-    );
+     const tokens = await this.tokenService.generateToken(
+       user.id,
+       user.email
+     );
 
-    return this.buildAuthResponse(result.user, result.workspace, tokens);
+     const refreshTokenHash = await this.tokenService.hashRefreshToken(
+       tokens.refreshToken,
+     );
+     await this.usersService.updateRefreshToken(
+       user.id,
+       refreshTokenHash,
+     );
+
+     return this.buildAuthResponse(user, tokens);
   }
 
   async login(dto: LoginDto) {
@@ -82,19 +81,22 @@ export class AuthService {
     }
 
     const memberShip = existingUser.memberships[0];
-    if (!memberShip) {
-      throw new ForbiddenException('User does not belong to any workspace');
+    let tokens ;
+    if (memberShip){
+           tokens = await this.tokenService.generateToken(
+             existingUser.id,
+             existingUser.email,
+             memberShip.workspaceId,
+             memberShip.role
+           );
+    }else{
+      tokens = await this.tokenService.generateToken(
+        existingUser.id,
+        existingUser.email,
+      );
     }
 
-    const workspace = memberShip.workspace;
-    const role = memberShip.role;
-
-    const tokens = await this.tokenService.generateToken(
-      existingUser.id,
-      existingUser.email,
-      workspace.id,
-      role,
-    );
+    
 
     const refreshTokenHash = await this.tokenService.hashRefreshToken(
       tokens.refreshToken,
@@ -104,7 +106,7 @@ export class AuthService {
       refreshTokenHash,
     );
 
-    return this.buildAuthResponse(existingUser, workspace, tokens);
+    return this.buildAuthResponse(existingUser, tokens);
   }
 
   async refresh(payload: JwtPayload, dto: RefreshTokenDto) {
@@ -165,59 +167,23 @@ export class AuthService {
     return this.usersService.findById(userId);
   }
 
-  private async createUserWithWorkspace(
-    dto: RegisterDto,
-    passwordHash: string,
-    slug: string,
-  ) {
-    return this.prisma.$transaction(async (tx) => {
-      const user = await this.usersService.create(
-        {
-          email: dto.email,
-          passwordHash,
-          firstName: dto.firstName,
-          lastName: dto.lastName,
-        },
-        tx,
-      );
+  private async createUser(dto: RegisterDto, passwordHash: string){
+    const data = {
+      email: dto.email,
+      passwordHash,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+    };
 
-      const workspace = await this.workspacesService.create(
-        {
-          name: dto.workspaceName,
-          slug,
-        },
-        tx,
-      );
+   const user= await this.prisma.user.create({
+      data
+    })
 
-      await this.workspaceMembersService.create(
-        {
-          role: WorkspaceRole.OWNER,
-
-          user: {
-            connect: {
-              id: user.id,
-            },
-          },
-
-          workspace: {
-            connect: {
-              id: workspace.id,
-            },
-          },
-        },
-        tx,
-      );
-
-      return {
-        user,
-        workspace,
-      };
-    });
+    return  user;
   }
 
   private buildAuthResponse(
     user: User,
-    workspace: Workspace,
     tokens: {
       accessToken: string;
       refreshToken: string;
@@ -230,13 +196,6 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
       },
-
-      workspace: {
-        id: workspace.id,
-        name: workspace.name,
-        slug: workspace.slug,
-      },
-
       tokens,
     };
   }

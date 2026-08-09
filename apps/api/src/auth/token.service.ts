@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { comparePassword, hashPassword } from 'src/common/utils/password.util';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config/dist/config.service';
-
 import { WorkspaceRole } from '@prisma/client';
 
 @Injectable()
@@ -15,14 +14,15 @@ export class TokenService {
   async generateToken(
     userId: string,
     email: string,
-    workspaceId: string,
-    role: WorkspaceRole,
+    workspaceId?:string,
+    role?:WorkspaceRole
+  
   ) {
     const payload = {
       sub: userId,
       email,
-      workspaceId,
-      role,
+      ...(workspaceId && { workspaceId }),
+      ...(role && { role }),
     };
 
     const accessToken = await this.jwtService.signAsync(payload, {

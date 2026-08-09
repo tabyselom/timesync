@@ -1,9 +1,16 @@
-import { IsDateString, IsEnum, IsOptional, IsString, IsUUID } from "class-validator";
-import { TaskPriority } from "@prisma/client";
+import {
+  IsDateString,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
+import { TaskPriority } from '@prisma/client';
 
-export class CreateTaskDto {
+export class UpdateTaskDto {
   @IsString()
-  title: string;
+  @IsOptional()
+  title?: string;
 
   @IsOptional()
   @IsString()
