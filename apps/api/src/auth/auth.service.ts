@@ -70,7 +70,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const tokens = await this.tokenService.generateToken(existingUser.id, existingUser.email);
+    const tokens = await this.tokenService.generateToken(
+      existingUser.id,
+      existingUser.email,
+    );
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -84,51 +87,6 @@ export class AuthService {
     return this.buildAuthResponse(existingUser, tokens);
   }
 
-  async selectWorkspace(userId: string, workspaceId: string) {
-    const membership = await this.prisma.workspaceMember.findUnique({
-      where: {
-        userId_workspaceId: {
-          userId,
-          workspaceId,
-        },
-      },
-    });
-
-    if (!membership) {
-      throw new ForbiddenException('You are not a member of this workspace.');
-    }
-
-    const user = await this.usersService.findById(userId);
-
-    if (!user) {
-      throw new UnauthorizedException('User not found.');
-    }
-
-    const tokens = await this.tokenService.generateToken(
-      user.id,
-      user.email,
-      membership.workspaceId,
-      membership.role,
-    );
-
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
-
-    await this.refreshTokenService.create(
-      user.id,
-      tokens.refreshToken,
-      expiresAt,
-    );
-
-    return {
-      message: 'Workspace selected successfully.',
-      workspace: {
-        id: membership.workspaceId,
-        role: membership.role,
-      },
-      tokens,
-    };
-  }
   async refresh(payload: JwtPayload, dto: RefreshTokenDto) {
     const user = await this.usersService.findByIdWithMemberShips(payload.id);
 
@@ -136,19 +94,16 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Find and validate the refresh-token session
-    const storedToken = await this.refreshTokenService.validate(
+    const storedToken = await this.refreshTokenService.validateAndDetectReuse(
       user.id,
       dto.refreshToken,
     );
 
     let tokens;
 
-    // If this refresh token belongs to a workspace session,
-    // verify that the membership still exists.
-    if (payload.workspaceId) {
+    if (storedToken.workspaceId) {
       const membership = user.memberships.find(
-        (membership) => membership.workspaceId === payload.workspaceId,
+        (membership) => membership.workspaceId === storedToken.workspaceId,
       );
 
       if (!membership) {
@@ -176,10 +131,16 @@ export class AuthService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
-    await this.refreshTokenService.create(
+    const newStoredToken = await this.refreshTokenService.create(
       user.id,
       tokens.refreshToken,
       expiresAt,
+      storedToken.workspaceId ?? undefined,
+    );
+
+    await this.refreshTokenService.markReplaced(
+      storedToken.id,
+      newStoredToken.id,
     );
 
     return {
@@ -187,10 +148,30 @@ export class AuthService {
       refreshToken: tokens.refreshToken,
     };
   }
-  async logout(userId: string) {
-    await this.refreshTokenService.revokeAll(userId);
+  async logout(userId: string, refreshToken: string) {
+  const session = await this.refreshTokenService.findToken(
+    userId,
+    refreshToken,
+  );
+
+  if (session.revokedAt) {
     return {
-      message: 'Logged out successfully',
+      message: 'Already logged out.',
+    };
+  }
+
+  await this.refreshTokenService.revoke(session.id);
+
+  return {
+    message: 'Logged out successfully.',
+  };
+}
+
+  async logoutAll(userId: string) {
+    await this.refreshTokenService.revokeAll(userId);
+
+    return {
+      message: 'All sessions have been logged out.',
     };
   }
 

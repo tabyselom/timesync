@@ -11,7 +11,7 @@ import { ChangeTaskPriorityDto } from './dto/change_task_priority.dto';
 
 @Controller({
   path: 'project/:projectId/tasks',
-  version:"1"
+  version: '1',
 })
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
@@ -66,6 +66,7 @@ export class TasksController {
   ) {
     return this.tasksService.deleteTask(projectId, taskId, user.id);
   }
+
 
   @Patch(':taskId/status')
   @UseGuards(JwtAuthGuard)

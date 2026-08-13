@@ -38,7 +38,7 @@ pnpm --filter api exec nest g controller  tasks --no-spec
 
 Status: ✔ Complete
 
-✅ Phase 2 — Workspace Management (Almost Done)
+✅ Phase 2 — Workspace Management (Done)
 ✅ Create workspace (during registration)
 ✅ Invite member
 ✅ Leave workspace
@@ -46,7 +46,7 @@ Status: ✔ Complete
 ✅ Remove member
 ✅ Update member role
 ✅ List workspace members
-🚀 Phase 3 — Projects
+🚀 Phase 3 — Projects(Done)
 
 This is where TimeSync starts becoming a real application.
 
@@ -83,7 +83,7 @@ Filtering
 Authorization
 
 
-🚀 Phase 4 — Tasks
+🚀 Phase 4 — Tasks(Done)
 
 Now it becomes similar to Jira or ClickUp.
 
@@ -100,17 +100,20 @@ dueDate
 Endpoints:
 
 ✅Create task
-Assign task
-Update task
-Delete task
-Move status
+✅Assign task
+✅Update task
+✅Delete task
+✅Move status
+
 
 This introduces more business logic.
 
 🚀 Phase 5 — Comments
-POST /tasks/:id/comments
-GET  /tasks/:id/comments
-DELETE
+✅POST /tasks/:id/comments
+✅GET  /tasks/:id/comments
+✅DELETE
+✅Update
+✅LIST
 
 You'll learn nested resources.
 

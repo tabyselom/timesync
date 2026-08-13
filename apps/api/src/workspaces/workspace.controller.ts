@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { WorkspacesService } from './workspaces.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CreateWorkspaceDto } from './dto/create_workspace.dto';
@@ -16,4 +16,16 @@ export class WorkspaceController {
   create(@Body() dto: CreateWorkspaceDto, @CurrentUser() user: JwtPayload) {
     return this.workspacesService.create(dto, user);
   }
+
+   @Post(':workspaceId/select')
+   @UseGuards(JwtAuthGuard)
+    select(
+      @Param('workspaceId', new ParseUUIDPipe()) workspaceId: string,
+      @CurrentUser() user: JwtPayload,
+    ) {
+      return this.workspacesService.select(user.id, workspaceId);
+    } 
+  
+
+
 }

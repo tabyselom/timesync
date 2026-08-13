@@ -12,6 +12,8 @@ import { ProjectsModule } from './projects/projects.module';
 import { TasksModule } from './tasks/tasks.module';
 
 import { ThrottlerModule } from '@nestjs/throttler';  
+import { CommentController } from './comment/comment.controller';
+import { CommentModule } from './comment/comment.module';
 
 @Module({
   imports: [
@@ -33,6 +35,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
     WorkspaceMembersModule,
     ProjectsModule,
     TasksModule,
+    CommentModule,
   ],
+  controllers: [],
 })
 export class AppModule {}

@@ -1,12 +1,18 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { comparePassword, hashPassword } from 'src/common/utils/password.util';
+import { RefreshToken } from '@prisma/client';
 
 @Injectable()
 export class RefreshTokenService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(userId: string, refreshToken: string, expiresAt: Date) {
+  async create(
+    userId: string,
+    refreshToken: string,
+    expiresAt: Date,
+    workspaceId?: string,
+  ) {
     const tokenHash = await hashPassword(refreshToken);
 
     return this.prisma.refreshToken.create({
@@ -14,6 +20,7 @@ export class RefreshTokenService {
         userId,
         tokenHash,
         expiresAt,
+        workspaceId,
       },
     });
   }
@@ -40,6 +47,25 @@ export class RefreshTokenService {
     throw new UnauthorizedException('Invalid or expired refresh token.');
   }
 
+  async validateAndDetectReuse(userId: string, refreshToken: string) {
+    const token = await this.findToken(userId, refreshToken);
+
+    if (token.revokedAt) {
+      // Possible token theft/reuse.
+      await this.revokeAll(userId);
+
+      throw new UnauthorizedException(
+        'Refresh token reuse detected. All sessions have been revoked.',
+      );
+    }
+
+    if (token.expiresAt <= new Date()) {
+      throw new UnauthorizedException('Refresh token has expired.');
+    }
+
+    return token;
+  }
+
   async revoke(tokenId: string) {
     return this.prisma.refreshToken.update({
       where: {
@@ -62,4 +88,91 @@ export class RefreshTokenService {
       },
     });
   }
+
+  async findToken(userId: string, refreshToken: string) {
+    const tokens = await this.prisma.refreshToken.findMany({
+      where: {
+        userId,
+      },
+    });
+
+    for (const token of tokens) {
+      const valid = await comparePassword(refreshToken, token.tokenHash);
+
+      if (valid) {
+        return token;
+      }
+    }
+
+    throw new UnauthorizedException('Invalid refresh token.');
+  }
+
+  async detectReuse(token: RefreshToken) {
+    if (!token.revokedAt) {
+      return false;
+    }
+
+    return true;
+  }
+
+  async markReplaced(oldTokenId: string, newTokenId: string) {
+    return this.prisma.refreshToken.update({
+      where: {
+        id: oldTokenId,
+      },
+      data: {
+        revokedAt: new Date(),
+        replacedByTokenId: newTokenId,
+      },
+    });
+  }
+
+  async getActiveSessions(userId: string) {
+    return this.prisma.refreshToken.findMany({
+      where: {
+        userId,
+        revokedAt: null,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      select: {
+        id: true,
+        workspaceId: true,
+        createdAt: true,
+        expiresAt: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  async revokeSession(userId: string, sessionId: string) {
+    const session = await this.prisma.refreshToken.findFirst({
+      where: {
+        id: sessionId,
+        userId,
+        revokedAt: null,
+      },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Session not found.');
+    }
+
+    await this.prisma.refreshToken.update({
+      where: {
+        id: session.id,
+      },
+      data: {
+        revokedAt: new Date(),
+      },
+    });
+
+    return {
+      message: 'Session revoked successfully.',
+    };
+  }
+  
 }

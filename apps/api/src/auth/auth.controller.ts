@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -23,6 +24,7 @@ import type { JwtPayload } from './../common/interfaces/jwt-payload.interface';
 import { RefreshTokenDto } from './dto/refresh.dto';
 import { Roles } from './decorators/roles/roles.decorator';
 import { Throttle } from '@nestjs/throttler';
+import { RefreshTokenService } from './refresh-token.service';
 
 @ApiTags('Authentication')
 @Controller({
@@ -30,7 +32,10 @@ import { Throttle } from '@nestjs/throttler';
   version: '1',
 })
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly refreshTokenService: RefreshTokenService,
+  ) {}
 
   @Post('register')
   @Throttle({
@@ -54,15 +59,6 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
-  @Post('workspaces/:workspaceId/select')
-  @UseGuards(JwtAuthGuard)
-  selectWorkspace(
-    @Param('workspaceId', new ParseUUIDPipe()) workspaceId: string,
-    @CurrentUser() user: JwtPayload,
-  ) {
-    return this.authService.selectWorkspace(user.id, workspaceId);
-  }
-
   @Post('refresh')
   @Throttle({
     default: {
@@ -79,11 +75,15 @@ export class AuthController {
   }
 
   @Post('logout')
-  @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  logout(@CurrentUser() user: JwtPayload) {
-    return this.authService.logout(user.id);
+  logout(@CurrentUser() user: JwtPayload, @Body() dto: RefreshTokenDto) {
+    return this.authService.logout(user.id, dto.refreshToken);
+  }
+
+  @Post('logout-all')
+  @UseGuards(JwtAuthGuard)
+  logoutAll(@CurrentUser() user: JwtPayload) {
+    return this.authService.logoutAll(user.id);
   }
 
   @Get('me')
@@ -100,5 +100,20 @@ export class AuthController {
     return {
       message: 'Welcome Admin!',
     };
+  }
+
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  getSessions(@CurrentUser() user: JwtPayload) {
+    return this.refreshTokenService.getActiveSessions(user.id);
+  }
+
+  @Delete('sessions/:sessionId')
+  @UseGuards(JwtAuthGuard)
+  revokeSession(
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.refreshTokenService.revokeSession(user.id, sessionId);
   }
 }

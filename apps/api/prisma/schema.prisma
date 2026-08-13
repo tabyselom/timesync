@@ -66,6 +66,7 @@ model User {
   memberships WorkspaceMember[]
   projectsCreated Project[]
   refreshTokens RefreshToken[]
+  comments Comment[]
 
   tasks Task[] @relation("createdTasks")
   assignedTasks  Task[] @relation("assignedTasks")
@@ -88,6 +89,7 @@ model Workspace {
 
   members WorkspaceMember[]
   project Project[]
+  refreshTokens RefreshToken[]
 }
 
 model WorkspaceMember {
@@ -143,6 +145,8 @@ model Task{
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
+  comments Comment[]
+
   
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdBy User @relation("createdTasks", fields: [createdById], references: [id])
@@ -155,15 +159,43 @@ model Task{
 model RefreshToken {
   id        String   @id @default(uuid())
   tokenHash String
+
   userId    String
+  workspaceId String?
+
   expiresAt DateTime
   revokedAt DateTime?
   createdAt DateTime @default(now())
 
+  replacedByTokenId String? @unique
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace? @relation( fields: [workspaceId], references: [id],onDelete: Cascade)
+  replacedByToken RefreshToken? @relation("TokenReplacement",fields: [replacedByTokenId],references: [id])
+
+  replacesToken RefreshToken? @relation("TokenReplacement")
+ 
 
   @@index([userId])
+  @@index([workspaceId])
   @@index([expiresAt])
+}
+
+model Comment {
+  id String @id @default(ulid())
+
+  content String
+
+  taskId String
+  userId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime?
+  deletedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
 }
 
 

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
@@ -17,9 +17,8 @@ import { RefreshTokenService } from './refresh-token.service';
 
 @Module({
   imports: [
-    JwtModule.register({}),
     UsersModule,
-    WorkspacesModule,
+    forwardRef(() => WorkspacesModule),
     WorkspaceMembersModule,
 
     JwtModule.registerAsync({
@@ -38,7 +37,7 @@ import { RefreshTokenService } from './refresh-token.service';
 
   controllers: [AuthController],
 
-  exports: [TokenService],
+  exports: [TokenService, RefreshTokenService, AuthService],
 
   providers: [
     AuthService,
